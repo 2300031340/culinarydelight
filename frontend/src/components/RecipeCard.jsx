@@ -1,21 +1,26 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import './RecipeCard.css';
 
 function RecipeCard({ recipe, isFavorite, onFavoriteClick, onViewRecipe }) {
+  const navigate = useNavigate();
+
   const handleFavoriteClick = (e) => {
-    e.preventDefault(); // Prevent navigation when clicking the heart
+    e.preventDefault();
+    e.stopPropagation();
     onFavoriteClick(recipe.id);
   };
 
   const handleViewRecipe = (e) => {
-    e.preventDefault(); // Prevent navigation
+    e.preventDefault();
+    e.stopPropagation();
     onViewRecipe(recipe);
   };
 
   return (
     <div className="recipe-card">
       <div className="recipe-image">
-        <img src={recipe.image} alt={recipe.title} />
+        <img src={recipe.image} alt={recipe.title} loading="lazy" />
       </div>
       <div className="recipe-content">
         <h3>{recipe.title}</h3>

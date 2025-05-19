@@ -1,95 +1,54 @@
 import React, { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
-import { RECIPES, recipeUtils } from './Home'
+import { useFavorites } from './FavoritesContext'
 import RecipeCard from './RecipeCard'
+import LoadingSpinner from './LoadingSpinner'
 import './Cuisines.css'
-
-// Map states to recipe titles (expand as needed)
-const STATE_RECIPES = {
-  'Andhra Pradesh': ['Masala Dosa', 'Rava Kesari', 'Bobbatlu (Andhra Style Sweet Roti)', 'Chakkera Pongali', 'Gunta Punugulu', 'Garelu – Andhra Style Medu Vada', 'Upma – Andhra Style'],
-  'Punjab': ['Butter Chicken'],
-  'Gujarat': ['Dhokla'],
-  'Telangana': ['Hyderabadi Dum Biryani'],
-  'Maharashtra': ['Pav Bhaji'],
-  'West Bengal': ['Fish Curry'],
-  'Tamil Nadu': ['Chettinad Chicken'],
-  'Kerala': ['Appam with Stew'],
-  'Goa': ['Goan Fish Curry'],
-  'Karnataka': ['Bisi Bele Bath'],
-  'Rajasthan': ['Dal Baati Churma'],
-  'Uttar Pradesh': ['Tunday Kababi'],
-  'Assam': ['Assam Laksa'],
-  'Bihar': ['Litti Chokha'],
-  'Odisha': ['Dalma'],
-  'Madhya Pradesh': ['Poha'],
-  'Haryana': ['Bhutte Ka Kees'],
-  'Chhattisgarh': ['Chana Samosa'],
-  'Jharkhand': ['Thekua'],
-  'Manipur': ['Eromba'],
-  'Meghalaya': ['Jadoh'],
-  'Mizoram': ['Bai'],
-  'Nagaland': ['Smoked Pork with Bamboo Shoot'],
-  'Sikkim': ['Phagshapa'],
-  'Tripura': ['Mui Borok'],
-  'Arunachal Pradesh': ['Thukpa'],
-  'Himachal Pradesh': ['Chana Madra'],
-  'Uttarakhand': ['Aloo Ke Gutke'],
-  // Italian regions:
-  'Lazio': ['Classic Pasta Carbonara'],
-  'Campania': ['Pizza Margherita'],
-  'Emilia-Romagna': ['Tagliatelle al Ragù (Bolognese)'],
-  'Liguria': ['Pesto alla Genovese'],
-  'Sicily (Sicilia) – Autonomous': ['Arancini'],
-  'Veneto': ['Risotto alla Milanese'],
-  'Tuscany (Toscana)': ['Ribollita'],
-  'Piedmont (Piemonte)': ['Bagna Cauda'],
-  'Lombardy (Lombardia)': ['Ossobuco alla Milanese'],
-  'Sardinia (Sardegna) – Autonomous': ['Pane Carasau'],
-  // Add more as you add recipes
-}
 
 const StateRecipes = () => {
   const { cuisineName, stateName } = useParams()
   const [selectedRecipe, setSelectedRecipe] = useState(null)
-  const [favoritesState, setFavoritesState] = useState(() => recipeUtils.loadFavoritesFromStorage())
   const [showSearch, setShowSearch] = useState(false)
   const [searchValue, setSearchValue] = useState('')
+  const [allRecipes, setAllRecipes] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const { favorites, toggleFavorite, loadingFavorites } = useFavorites();
 
-  // Save favorites to localStorage whenever they change
+  // Fetch all recipes from backend
   useEffect(() => {
-    recipeUtils.saveFavoritesToStorage(favoritesState)
-  }, [favoritesState])
+    setLoading(true)
+    fetch('http://localhost:5000/api/recipes?limit=100')
+      .then(res => res.json())
+      .then(data => {
+        setAllRecipes(data.recipes || [])
+        setLoading(false)
+      })
+      .catch(err => {
+        setError('Failed to fetch recipes from backend.')
+        setLoading(false)
+      })
+  }, [])
 
-  // Filter recipes by state
-  const stateRecipes = RECIPES.filter(recipe => 
+  // Filter recipes by state and cuisine
+  const stateRecipes = allRecipes.filter(recipe => 
     recipe.category === cuisineName && 
-    recipe.state === stateName
+    Array.isArray(recipe.states) && recipe.states.includes(stateName)
   )
 
   // Filter by search value (title, description, ingredients)
   const filteredStateRecipes = searchValue.trim()
     ? stateRecipes.filter(recipe => {
         const query = searchValue.toLowerCase().trim()
-        if (recipe.title.toLowerCase().includes(query)) return true
+        if (recipe.title && recipe.title.toLowerCase().includes(query)) return true
         if (recipe.description && recipe.description.toLowerCase().includes(query)) return true
         if (recipe.ingredients && recipe.ingredients.some(ingredient => ingredient.toLowerCase().includes(query))) return true
         return false
       })
     : stateRecipes
 
-  console.log('StateRecipes page for:', stateName)
-  console.log('Recipes for this state:', stateRecipes)
-
   const handleFavoriteClick = (recipeId) => {
-    setFavoritesState(prev => {
-      const newSet = new Set(prev)
-      if (newSet.has(recipeId)) {
-        newSet.delete(recipeId)
-      } else {
-        newSet.add(recipeId)
-      }
-      return newSet
-    })
+    toggleFavorite(recipeId)
   }
 
   const handleViewRecipe = (recipe) => {
@@ -121,14 +80,16 @@ const StateRecipes = () => {
             />
           </div>
         </div>
+        {loading && <LoadingSpinner size="medium" />}
+        {error && <div className="error-message">{error}</div>}
         <div className="recipe-grid">
           {filteredStateRecipes.length > 0 ? (
             filteredStateRecipes.map(recipe => (
               <RecipeCard
-                key={recipe.id}
+                key={recipe._id || recipe.id}
                 recipe={recipe}
-                isFavorite={favoritesState.has(recipe.id)}
-                onFavoriteClick={() => handleFavoriteClick(recipe.id)}
+                isFavorite={favorites.has((recipe._id || recipe.id)?.toString())}
+                onFavoriteClick={() => handleFavoriteClick((recipe._id || recipe.id)?.toString())}
                 onViewRecipe={() => handleViewRecipe(recipe)}
                 className="small"
               />

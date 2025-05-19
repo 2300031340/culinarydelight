@@ -1,33 +1,36 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import RecipeCard from './RecipeCard';
+import LoadingSpinner from './LoadingSpinner';
 import './Preferences.css';
-
-// Import the RECIPES array and recipeUtils from Home.jsx
-import { RECIPES, recipeUtils } from './Home';
+import { useFavorites } from './FavoritesContext';
 
 function Preferences() {
   const [activePanel, setActivePanel] = useState('favorites');
-  const [favoritesState, setFavoritesState] = useState(() => recipeUtils.loadFavoritesFromStorage());
   const [filterCategory, setFilterCategory] = useState('All');
   const [selectedRecipe, setSelectedRecipe] = useState(null);
+  const [allRecipes, setAllRecipes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const { favorites, toggleFavorite, loadingFavorites } = useFavorites();
 
+  // Fetch all recipes from backend
   useEffect(() => {
-    // Scroll to top when component mounts
-    window.scrollTo(0, 0);
+    setLoading(true);
+    fetch('http://localhost:5000/api/recipes?limit=100')
+      .then(res => res.json())
+      .then(data => {
+        setAllRecipes(data.recipes || []);
+        setLoading(false);
+      })
+      .catch(() => {
+        setError('Failed to fetch recipes from backend.');
+        setLoading(false);
+      });
   }, []);
 
   const handleFavoriteClick = (recipeId) => {
-    setFavoritesState(prevFavorites => {
-      const newFavorites = new Set(prevFavorites);
-      if (newFavorites.has(recipeId)) {
-        newFavorites.delete(recipeId);
-      } else {
-        newFavorites.add(recipeId);
-      }
-      recipeUtils.saveFavoritesToStorage(newFavorites);
-      return newFavorites;
-    });
+    toggleFavorite(recipeId);
   };
 
   const handleViewRecipe = (recipe) => {
@@ -36,11 +39,11 @@ function Preferences() {
 
   // Get favorite recipes with optional category filter
   const getFavoriteRecipes = () => {
-    const favorites = RECIPES.filter(recipe => favoritesState.has(recipe.id));
+    const favoritesList = allRecipes.filter(recipe => favorites.has((recipe._id || recipe.id)?.toString()));
     if (filterCategory === 'All') {
-      return favorites;
+      return favoritesList;
     }
-    return favorites.filter(recipe => recipe.category === filterCategory);
+    return favoritesList.filter(recipe => recipe.category === filterCategory);
   };
 
   // Get unique categories from favorite recipes
@@ -87,14 +90,17 @@ function Preferences() {
               </div>
             </div>
 
+            {loading && <LoadingSpinner size="medium" />}
+            {error && <div className="error-message">{error}</div>}
+
             {getFavoriteRecipes().length > 0 ? (
               <div className="recipe-grid">
                 {getFavoriteRecipes().map(recipe => (
                   <RecipeCard 
-                    key={recipe.id}
+                    key={recipe._id || recipe.id}
                     recipe={recipe}
                     isFavorite={true}
-                    onFavoriteClick={() => handleFavoriteClick(recipe.id)}
+                    onFavoriteClick={() => handleFavoriteClick((recipe._id || recipe.id)?.toString())}
                     onViewRecipe={handleViewRecipe}
                   />
                 ))}
@@ -148,8 +154,8 @@ function Preferences() {
                       {step.instructions.map((instruction, idx) => (
                         <li key={idx}>{instruction}</li>
                       ))}
-              </ol>
-            </div>
+            </ol>
+          </div>
                 ))}
               </div>
             )}
