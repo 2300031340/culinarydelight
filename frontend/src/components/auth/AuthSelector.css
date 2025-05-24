@@ -47,4 +47,13 @@
 .chef-button {
   background-color: #f44336;
   color: white;
+}
+
+.admin-button {
+  background-color: #e74c3c;
+  color: white;
+}
+
+.admin-button:hover {
+  background-color: #c0392b;
 } 

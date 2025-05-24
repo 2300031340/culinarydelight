@@ -21,6 +21,9 @@ app.use('/api/recipes', recipeRoutes);
 const favoritesRouter = require('./routes/favorites');
 app.use('/api/favorites', favoritesRouter);
 
+const authRouter = require('./routes/auth');
+app.use('/api/auth', authRouter);
+
 // Basic route
 app.get('/', (req, res) => {
   res.json({ message: 'Welcome to Recipe API' });

@@ -36,13 +36,16 @@ const StateRecipes = () => {
     Array.isArray(recipe.states) && recipe.states.includes(stateName)
   )
 
-  // Filter by search value (title, description, ingredients)
+  // Filter by search value (title, category, state only)
   const filteredStateRecipes = searchValue.trim()
     ? stateRecipes.filter(recipe => {
         const query = searchValue.toLowerCase().trim()
+        // Search in title
         if (recipe.title && recipe.title.toLowerCase().includes(query)) return true
-        if (recipe.description && recipe.description.toLowerCase().includes(query)) return true
-        if (recipe.ingredients && recipe.ingredients.some(ingredient => ingredient.toLowerCase().includes(query))) return true
+        // Search in category
+        if (recipe.category && recipe.category.toLowerCase().includes(query)) return true
+        // Search in state
+        if (Array.isArray(recipe.states) && recipe.states.some(state => state.toLowerCase().includes(query))) return true
         return false
       })
     : stateRecipes

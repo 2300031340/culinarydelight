@@ -18,6 +18,12 @@ const AuthSelector = ({ onSelect }) => {
         >
           Login as Chef
         </button>
+        <button 
+          className="auth-button admin-button"
+          onClick={() => onSelect('admin')}
+        >
+          Login as Admin
+        </button>
       </div>
     </div>
   );

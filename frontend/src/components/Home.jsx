@@ -173,18 +173,10 @@ function Home({ user, searchQuery, showSignUp, setShowSignUp, onAuthSuccess, onF
       const filtered = allRecipes.filter(recipe => {
         // Search in title
         if (recipe.title && recipe.title.toLowerCase().includes(query)) return true
-        // Search in description
-        if (recipe.description && recipe.description.toLowerCase().includes(query)) return true
         // Search in category
         if (recipe.category && recipe.category.toLowerCase().includes(query)) return true
         // Search in state
-        if (Array.isArray(recipe.states) && recipe.states.includes(query)) return true
-        // Search in ingredients
-        if (recipe.ingredients) {
-          return recipe.ingredients.some(ingredient => 
-            ingredient.toLowerCase().includes(query)
-          )
-        }
+        if (Array.isArray(recipe.states) && recipe.states.some(state => state.toLowerCase().includes(query))) return true
         return false
       })
       setFilteredRecipes(filtered)
@@ -238,7 +230,6 @@ function Home({ user, searchQuery, showSignUp, setShowSignUp, onAuthSuccess, onF
   }
 
   const handleViewRecipe = (recipe) => {
-    if (searchQuery.trim()) return; // Don't open modal if searching
     setSelectedRecipe(recipe);
   }
 

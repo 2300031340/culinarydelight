@@ -135,4 +135,17 @@ router.get('/search/:query', async (req, res) => {
   }
 });
 
+
+router.get('/cuisine/:cuisine/states', async (req, res) => {
+  try {
+    const cuisine = req.params.cuisine;
+    const recipes = await Recipe.find({ category: cuisine });
+   
+    const allStates = [...new Set(recipes.flatMap(r => r.states))];
+    res.json({ states: allStates });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 module.exports = router; 

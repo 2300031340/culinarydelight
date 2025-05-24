@@ -72,6 +72,12 @@ const AuthModal = ({ isOpen, onClose, onAuthSuccess }) => {
             >
               Chef
             </button>
+            <button
+              className={`toggle-btn ${userType === 'ADMIN' ? 'active' : ''}`}
+              onClick={() => setUserType('ADMIN')}
+            >
+              Admin
+            </button>
           </div>
 
           <form onSubmit={handleSubmit} className="auth-form">

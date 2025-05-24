@@ -31,49 +31,44 @@ const LoginForm = ({ onClose, onAuthSuccess }) => {
 
   const handleSendOTP = async (e) => {
     e.preventDefault();
+    setError('');
     if (!formData.emailOrPhone) {
       setError('Please enter your email or phone number');
       return;
     }
-    // Here you would typically make an API call to send OTP
-    setStep(2);
+    try {
+      await fetch('/api/auth/request-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          emailOrPhone: formData.emailOrPhone,
+          password: formData.password,
+          userType: userType
+        }),
+      });
+      setStep(2);
+    } catch (err) {
+      setError('Failed to send OTP');
+    }
   };
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
-
     try {
-      const endpoint = '/api/auth/login';
-      const requestData = {
-        emailOrPhone: formData.emailOrPhone,
-        password: formData.password,
-        otp: formData.otp,
-        userType: userType
-      };
-
-      const response = await fetch(endpoint, {
+      const res = await fetch('/api/auth/verify-otp', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestData),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          emailOrPhone: formData.emailOrPhone,
+          otp: formData.otp
+        }),
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Login failed');
-      }
-
-      if (data.token) {
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('userType', data.userType);
-      }
-
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Invalid OTP');
       onAuthSuccess(data);
     } catch (err) {
-      setError(err.message || 'An error occurred during login');
+      setError(err.message);
     }
   };
 

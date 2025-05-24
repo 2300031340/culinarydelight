@@ -29,6 +29,7 @@ const SignUpForm = ({ onClose, onAuthSuccess, onSwitchToLogin }) => {
   const [error, setError] = useState('');
   const [otpSent, setOtpSent] = useState(false);
   const [otpVerified, setOtpVerified] = useState(false);
+  const [registrationSuccess, setRegistrationSuccess] = useState(false);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -95,18 +96,39 @@ const SignUpForm = ({ onClose, onAuthSuccess, onSwitchToLogin }) => {
   const handleNext = async () => {
     setError('');
     if (step === 1 && validateStep1()) {
-      // Simulate sending OTP
-      setOtpSent(true);
-      setStep(2);
+      try {
+        await fetch('/api/auth/request-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            emailOrPhone: formData.emailOrPhone,
+            password: formData.password,
+            userType
+          }),
+        });
+        setOtpSent(true);
+        setStep(2);
+      } catch (err) {
+        setError('Failed to send OTP');
+      }
     }
     if (step === 2 && otpSent) {
-      // Simulate OTP verification (replace with real API call)
-      if (formData.otp === '123456') { // For demo, correct OTP is 123456
+      try {
+        const res = await fetch('/api/auth/verify-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            emailOrPhone: formData.emailOrPhone,
+            otp: formData.otp
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Invalid OTP');
         setOtpVerified(true);
         setStep(3);
         setError('');
-      } else {
-        setError('Invalid OTP. Please try again.');
+      } catch (err) {
+        setError(err.message);
       }
     }
   };
@@ -169,12 +191,23 @@ const SignUpForm = ({ onClose, onAuthSuccess, onSwitchToLogin }) => {
         throw new Error(data.message || 'Registration failed');
       }
 
-      if (data.token) {
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('userType', data.userType);
-      }
-
-      onAuthSuccess(data);
+      setRegistrationSuccess(true);
+      setFormData({
+        emailOrPhone: '',
+        password: '',
+        confirmPassword: '',
+        username: '',
+        name: '',
+        experienceYears: '',
+        bio: '',
+        specialties: [],
+        agreeToTerms: false,
+        otp: ''
+      });
+      setStep(1);
+      setOtpSent(false);
+      setOtpVerified(false);
+      setError('');
     } catch (err) {
       setError(err.message || 'An error occurred during registration');
     }
@@ -188,228 +221,237 @@ const SignUpForm = ({ onClose, onAuthSuccess, onSwitchToLogin }) => {
   return (
     <div className="signup-container">
       <div className="signup-card">
-        <div className="signup-header">
-          {step > 1 && (
-            <button className="back-arrow" onClick={handleBack} aria-label="Go back">
-              <span style={{ fontSize: '1.5rem', color: '#4299e1', fontWeight: 700 }}>&larr;</span>
-            </button>
-          )}
-          <h2>Create Your Account</h2>
-          <button className="close-button" onClick={onClose}>×</button>
-        </div>
-
-        <div className="progress-bar">
-          <div className={`progress-step ${step >= 1 ? 'active' : ''}`}>
-            <span className="step-number">1</span>
-            <span className="step-label">Account</span>
+        {registrationSuccess ? (
+          <div className="success-message" style={{ textAlign: 'center', padding: '2rem' }}>
+            <h2>Account Created!</h2>
+            <p>Your account was created successfully.</p>
+            <button className="next-button" onClick={onClose}>Close</button>
           </div>
-          <div className={`progress-step ${step >= 2 ? 'active' : ''}`}>
-            <span className="step-number">2</span>
-            <span className="step-label">Verification</span>
-          </div>
-          <div className={`progress-step ${step >= 3 ? 'active' : ''}`}>
-            <span className="step-number">3</span>
-            <span className="step-label">Profile</span>
-          </div>
-        </div>
-
-        {step === 1 && (
-          <div className="step-content">
-            <div className="user-type-selector">
-              <button
-                className={`type-button ${userType === 'USER' ? 'active' : ''}`}
-                onClick={() => setUserType('USER')}
-              >
-                <i className="fas fa-user"></i>
-                <span>User</span>
-              </button>
-              <button
-                className={`type-button ${userType === 'CHEF' ? 'active' : ''}`}
-                onClick={() => setUserType('CHEF')}
-              >
-                <i className="fas fa-utensils"></i>
-                <span>Chef</span>
-              </button>
+        ) : (
+          <>
+            <div className="signup-header">
+              {step > 1 && (
+                <button className="back-arrow" onClick={handleBack} aria-label="Go back">
+                  <span style={{ fontSize: '1.5rem', color: '#4299e1', fontWeight: 700 }}>&larr;</span>
+                </button>
+              )}
+              <h2>Create Your Account</h2>
+              <button className="close-button" onClick={onClose}>×</button>
             </div>
 
-            <form onSubmit={(e) => { e.preventDefault(); handleNext(); }}>
-              <div className="form-group">
-                <label>Email or Phone Number</label>
-                <input
-                  type="text"
-                  name="emailOrPhone"
-                  value={formData.emailOrPhone}
-                  onChange={handleChange}
-                  placeholder="Enter your email or phone number"
-                  autoComplete="email"
-                  spellCheck="false"
-                />
+            <div className="progress-bar">
+              <div className={`progress-step ${step >= 1 ? 'active' : ''}`}>
+                <span className="step-number">1</span>
+                <span className="step-label">Account</span>
               </div>
-
-              <div className="form-group">
-                <label>Password</label>
-                <input
-                  type="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  placeholder="Create a password"
-                  autoComplete="new-password"
-                  spellCheck="false"
-                />
+              <div className={`progress-step ${step >= 2 ? 'active' : ''}`}>
+                <span className="step-number">2</span>
+                <span className="step-label">Verification</span>
               </div>
-
-              <div className="form-group">
-                <label>Confirm Password</label>
-                <input
-                  type="password"
-                  name="confirmPassword"
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  placeholder="Confirm your password"
-                  autoComplete="new-password"
-                  spellCheck="false"
-                />
+              <div className={`progress-step ${step >= 3 ? 'active' : ''}`}>
+                <span className="step-number">3</span>
+                <span className="step-label">Profile</span>
               </div>
+            </div>
 
-              {error && <div className="error-message">{error}</div>}
-
-              <button type="submit" className="next-button">
-                Next Step
-              </button>
-            </form>
-          </div>
-        )}
-
-        {step === 2 && (
-          <div className="step-content">
-            <form onSubmit={(e) => { e.preventDefault(); handleNext(); }}>
-              <div className="form-group">
-                <label>Enter OTP</label>
-                <input
-                  type="text"
-                  name="otp"
-                  value={formData.otp}
-                  onChange={handleChange}
-                  placeholder={`Enter the OTP sent to your ${isValidEmail(formData.emailOrPhone) ? 'email' : 'phone'}`}
-                  autoComplete="off"
-                  spellCheck="false"
-                />
-              </div>
-              {error && <div className="error-message">{error}</div>}
-              <div className="button-group">
-                <button type="submit" className="next-button">
-                  Verify OTP
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
-
-        {step === 3 && (
-          <div className="step-content">
-            <form onSubmit={handleSubmit}>
-              {userType === 'USER' ? (
-                <div className="form-group">
-                  <label>Username</label>
-                  <input
-                    type="text"
-                    name="username"
-                    value={formData.username}
-                    onChange={handleChange}
-                    placeholder="Choose a username"
-                    autoComplete="username"
-                    spellCheck="false"
-                  />
+            {step === 1 && (
+              <div className="step-content">
+                <div className="user-type-selector">
+                  <button
+                    className={`type-button ${userType === 'USER' ? 'active' : ''}`}
+                    onClick={() => setUserType('USER')}
+                  >
+                    <i className="fas fa-user"></i>
+                    <span>User</span>
+                  </button>
+                  <button
+                    className={`type-button ${userType === 'CHEF' ? 'active' : ''}`}
+                    onClick={() => setUserType('CHEF')}
+                  >
+                    <i className="fas fa-utensils"></i>
+                    <span>Chef</span>
+                  </button>
                 </div>
-              ) : (
-                <>
+
+                <form onSubmit={(e) => { e.preventDefault(); handleNext(); }}>
                   <div className="form-group">
-                    <label>Full Name</label>
+                    <label>Email or Phone Number</label>
                     <input
                       type="text"
-                      name="name"
-                      value={formData.name}
+                      name="emailOrPhone"
+                      value={formData.emailOrPhone}
                       onChange={handleChange}
-                      placeholder="Enter your full name"
-                      autoComplete="name"
+                      placeholder="Enter your email or phone number"
+                      autoComplete="email"
                       spellCheck="false"
                     />
                   </div>
 
                   <div className="form-group">
-                    <label>Years of Experience</label>
+                    <label>Password</label>
                     <input
-                      type="number"
-                      name="experienceYears"
-                      value={formData.experienceYears}
+                      type="password"
+                      name="password"
+                      value={formData.password}
                       onChange={handleChange}
-                      placeholder="Enter years of experience"
-                      min="0"
+                      placeholder="Create a password"
+                      autoComplete="new-password"
+                      spellCheck="false"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Confirm Password</label>
+                    <input
+                      type="password"
+                      name="confirmPassword"
+                      value={formData.confirmPassword}
+                      onChange={handleChange}
+                      placeholder="Confirm your password"
+                      autoComplete="new-password"
+                      spellCheck="false"
+                    />
+                  </div>
+
+                  {error && <div className="error-message">{error}</div>}
+
+                  <button type="submit" className="next-button">
+                    Next Step
+                  </button>
+                </form>
+              </div>
+            )}
+
+            {step === 2 && (
+              <div className="step-content">
+                <form onSubmit={(e) => { e.preventDefault(); handleNext(); }}>
+                  <div className="form-group">
+                    <label>Enter OTP</label>
+                    <input
+                      type="text"
+                      name="otp"
+                      value={formData.otp}
+                      onChange={handleChange}
+                      placeholder={`Enter the OTP sent to your ${isValidEmail(formData.emailOrPhone) ? 'email' : 'phone'}`}
                       autoComplete="off"
                       spellCheck="false"
                     />
                   </div>
-
-                  <div className="form-group">
-                    <label>Bio</label>
-                    <textarea
-                      name="bio"
-                      value={formData.bio}
-                      onChange={handleChange}
-                      placeholder="Tell us about yourself"
-                      rows="4"
-                      spellCheck="true"
-                    />
+                  {error && <div className="error-message">{error}</div>}
+                  <div className="button-group">
+                    <button type="submit" className="next-button">
+                      Verify OTP
+                    </button>
                   </div>
+                </form>
+              </div>
+            )}
 
-                  <div className="form-group">
-                    <label>Specialties</label>
-                    <div className="specialties-grid">
-                      {specialties.map(specialty => (
-                        <button
-                          key={specialty}
-                          type="button"
-                          className={`specialty-button ${formData.specialties.includes(specialty) ? 'active' : ''}`}
-                          onClick={() => handleSpecialtyChange(specialty)}
-                        >
-                          {specialty}
-                        </button>
-                      ))}
+            {step === 3 && (
+              <div className="step-content">
+                <form onSubmit={handleSubmit}>
+                  {userType === 'USER' ? (
+                    <div className="form-group">
+                      <label>Username</label>
+                      <input
+                        type="text"
+                        name="username"
+                        value={formData.username}
+                        onChange={handleChange}
+                        placeholder="Choose a username"
+                        autoComplete="username"
+                        spellCheck="false"
+                      />
                     </div>
+                  ) : (
+                    <>
+                      <div className="form-group">
+                        <label>Full Name</label>
+                        <input
+                          type="text"
+                          name="name"
+                          value={formData.name}
+                          onChange={handleChange}
+                          placeholder="Enter your full name"
+                          autoComplete="name"
+                          spellCheck="false"
+                        />
+                      </div>
+
+                      <div className="form-group">
+                        <label>Years of Experience</label>
+                        <input
+                          type="number"
+                          name="experienceYears"
+                          value={formData.experienceYears}
+                          onChange={handleChange}
+                          placeholder="Enter years of experience"
+                          min="0"
+                          autoComplete="off"
+                          spellCheck="false"
+                        />
+                      </div>
+
+                      <div className="form-group">
+                        <label>Bio</label>
+                        <textarea
+                          name="bio"
+                          value={formData.bio}
+                          onChange={handleChange}
+                          placeholder="Tell us about yourself"
+                          rows="4"
+                          spellCheck="true"
+                        />
+                      </div>
+
+                      <div className="form-group">
+                        <label>Specialties</label>
+                        <div className="specialties-grid">
+                          {specialties.map(specialty => (
+                            <button
+                              key={specialty}
+                              type="button"
+                              className={`specialty-button ${formData.specialties.includes(specialty) ? 'active' : ''}`}
+                              onClick={() => handleSpecialtyChange(specialty)}
+                            >
+                              {specialty}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  <div className="form-group checkbox-group">
+                    <label className="checkbox-label">
+                      <input
+                        type="checkbox"
+                        name="agreeToTerms"
+                        checked={formData.agreeToTerms}
+                        onChange={handleChange}
+                      />
+                      <span>I agree to the Terms of Service and Privacy Policy</span>
+                    </label>
                   </div>
-                </>
-              )}
 
-              <div className="form-group checkbox-group">
-                <label className="checkbox-label">
-                  <input
-                    type="checkbox"
-                    name="agreeToTerms"
-                    checked={formData.agreeToTerms}
-                    onChange={handleChange}
-                  />
-                  <span>I agree to the Terms of Service and Privacy Policy</span>
-                </label>
+                  {error && <div className="error-message">{error}</div>}
+
+                  <div className="button-group">
+                    <button type="submit" className="submit-button">
+                      Create Account
+                    </button>
+                  </div>
+                </form>
               </div>
-
-              {error && <div className="error-message">{error}</div>}
-
-              <div className="button-group">
-                <button type="submit" className="submit-button">
-                  Create Account
-                </button>
-              </div>
-            </form>
-          </div>
+            )}
+            <div className="login-link">
+              Already have an account?{' '}
+              <button onClick={onSwitchToLogin} className="link-button">
+                Login
+              </button>
+            </div>
+          </>
         )}
-
-        <div className="login-link">
-          Already have an account?{' '}
-          <button onClick={onSwitchToLogin} className="link-button">
-            Login
-          </button>
-        </div>
       </div>
     </div>
   );
