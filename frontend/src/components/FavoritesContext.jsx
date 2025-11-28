@@ -19,7 +19,7 @@ export function FavoritesProvider({ children }) {
   useEffect(() => {
     const sessionId = getSessionId();
     setLoadingFavorites(true);
-    fetch(`http://localhost:5000/api/favorites/${sessionId}`)
+    fetch(`/api/favorites/${sessionId}`)
       .then(res => res.json())
       .then(ids => {
         setFavorites(new Set((ids || []).map(id => id.toString())));
@@ -35,7 +35,7 @@ export function FavoritesProvider({ children }) {
   useEffect(() => {
     if (!loadingFavorites) {
       const sessionId = getSessionId();
-      fetch(`http://localhost:5000/api/favorites/${sessionId}`, {
+      fetch(`/api/favorites/${sessionId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ recipeIds: Array.from(favorites) })

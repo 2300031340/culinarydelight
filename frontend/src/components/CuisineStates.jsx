@@ -16,7 +16,7 @@ const CuisineStates = () => {
     if (!cuisineName) return;
     setLoading(true)
     setError(null)
-    fetch(`http://localhost:5000/api/recipes/cuisine/${cuisineName}/states`)
+    fetch(`/api/recipes/cuisine/${cuisineName}/states`)
       .then(res => {
         if (!res.ok) throw new Error('Failed to fetch states')
         return res.json()

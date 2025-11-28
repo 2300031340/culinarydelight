@@ -1,0 +1,120 @@
+---
+- name: Deploy Recipe App to Kubernetes
+  hosts: localhost
+  gather_facts: yes
+  vars:
+    dockerhub_username: "YOUR_DOCKERHUB_USERNAME"
+    namespace: "recipe-app"
+    k8s_context: "your-k8s-context"  # Update with your Kubernetes context
+    
+  tasks:
+    - name: Check if kubectl is installed
+      command: kubectl version --client
+      register: kubectl_check
+      changed_when: false
+      failed_when: false
+
+    - name: Fail if kubectl is not installed
+      fail:
+        msg: "kubectl is not installed. Please install kubectl first."
+      when: kubectl_check.rc != 0
+
+    - name: Set Kubernetes context
+      command: kubectl config use-context {{ k8s_context }}
+      when: k8s_context != "your-k8s-context"
+
+    - name: Create namespace
+      kubernetes.core.k8s:
+        name: {{ namespace }}
+        api_version: v1
+        kind: Namespace
+        state: present
+
+    - name: Apply ConfigMap
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: recipe-app-config
+            namespace: {{ namespace }}
+          data:
+            PORT: "5000"
+            NODE_ENV: "production"
+            VITE_API_URL: "http://backend-service:5000"
+      # Alternative: use kubectl apply
+      # command: kubectl apply -f k8s/configmap.yaml
+
+    - name: Create Secret (if not exists)
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: recipe-app-secrets
+            namespace: {{ namespace }}
+          type: Opaque
+          stringData:
+            MONGODB_URI: "{{ mongodb_uri | default('mongodb://mongodb-service:27017/recipe-app') }}"
+            JWT_SECRET: "{{ jwt_secret | default('change-this-secret') }}"
+      no_log: true
+
+    - name: Deploy MongoDB
+      kubernetes.core.k8s:
+        state: present
+        definition: "{{ lookup('file', 'k8s/mongodb-deployment.yaml') | from_yaml }}"
+      vars:
+        namespace: {{ namespace }}
+
+    - name: Wait for MongoDB to be ready
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: {{ namespace }}
+        label_selectors:
+          - app=mongodb
+      register: mongodb_pods
+      until: mongodb_pods.resources | selectattr('status.phase', 'equalto', 'Running') | list | length > 0
+      retries: 30
+      delay: 10
+
+    - name: Deploy Backend
+      kubernetes.core.k8s:
+        state: present
+        definition: "{{ lookup('file', 'k8s/backend-deployment.yaml') | from_yaml }}"
+      vars:
+        namespace: {{ namespace }}
+        dockerhub_username: {{ dockerhub_username }}
+
+    - name: Deploy Frontend
+      kubernetes.core.k8s:
+        state: present
+        definition: "{{ lookup('file', 'k8s/frontend-deployment.yaml') | from_yaml }}"
+      vars:
+        namespace: {{ namespace }}
+        dockerhub_username: {{ dockerhub_username }}
+
+    - name: Deploy Ingress
+      kubernetes.core.k8s:
+        state: present
+        definition: "{{ lookup('file', 'k8s/ingress.yaml') | from_yaml }}"
+      vars:
+        namespace: {{ namespace }}
+
+    - name: Wait for all pods to be ready
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: {{ namespace }}
+      register: all_pods
+      until: >
+        all_pods.resources | 
+        selectattr('status.phase', 'equalto', 'Running') | 
+        list | length == all_pods.resources | length
+      retries: 30
+      delay: 10
+
+    - name: Display deployment status
+      debug:
+        msg: "Deployment completed successfully. All pods are running."
+

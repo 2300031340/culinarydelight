@@ -153,7 +153,7 @@ function Home({ user, searchQuery, showSignUp, setShowSignUp, onAuthSuccess, onF
   // Fetch recipes from backend API
   useEffect(() => {
     setLoading(true)
-    fetch('http://localhost:5000/api/recipes?limit=100')
+    fetch('/api/recipes?limit=100')
       .then(res => res.json())
       .then(data => {
         setAllRecipes(data.recipes || [])

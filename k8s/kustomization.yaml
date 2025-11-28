@@ -1,0 +1,28 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: recipe-app
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - secret.yaml
+  - mongodb-deployment.yaml
+  - backend-deployment.yaml
+  - frontend-deployment.yaml
+  - ingress.yaml
+
+# Common labels
+commonLabels:
+  app: recipe-app
+  version: v1
+
+# Image replacements (update with your Docker Hub username)
+images:
+  - name: YOUR_DOCKERHUB_USERNAME/recipe-app-backend
+    newName: YOUR_DOCKERHUB_USERNAME/recipe-app-backend
+    newTag: latest
+  - name: YOUR_DOCKERHUB_USERNAME/recipe-app-frontend
+    newName: YOUR_DOCKERHUB_USERNAME/recipe-app-frontend
+    newTag: latest
+

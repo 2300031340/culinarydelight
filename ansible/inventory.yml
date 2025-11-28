@@ -1,0 +1,33 @@
+---
+# Ansible Inventory
+# This inventory file can be used for deploying to Kubernetes clusters
+# or managing infrastructure
+
+all:
+  children:
+    k8s_cluster:
+      hosts:
+        localhost:
+          ansible_connection: local
+          k8s_context: "your-k8s-context"  # Update with your context
+          dockerhub_username: "YOUR_DOCKERHUB_USERNAME"
+          mongodb_uri: "mongodb://mongodb-service:27017/recipe-app"
+          jwt_secret: "your-secret-key-here"
+    
+    # Example for multiple environments
+    production:
+      hosts:
+        prod-k8s:
+          ansible_connection: local
+          k8s_context: "production-cluster"
+          dockerhub_username: "YOUR_DOCKERHUB_USERNAME"
+          mongodb_uri: "mongodb://prod-mongodb:27017/recipe-app"
+    
+    staging:
+      hosts:
+        staging-k8s:
+          ansible_connection: local
+          k8s_context: "staging-cluster"
+          dockerhub_username: "YOUR_DOCKERHUB_USERNAME"
+          mongodb_uri: "mongodb://staging-mongodb:27017/recipe-app"
+
